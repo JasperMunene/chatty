@@ -50,13 +50,23 @@ passport.deserializeUser(async (id, done) => {
 router.post('/signup', async (req, res) => {
     const { name, email, password } = req.body;
 
+    // Validate input
     if (!name || !email || !password) {
         return res.status(400).send({ message: 'All fields are required' });
     }
 
     try {
+        // Check if the email is already registered
+        const existingUser = await prisma.user.findUnique({ where: { email } });
+
+        if (existingUser) {
+            return res.status(400).send({ message: 'Email is already registered. Please log in or use a different email.' });
+        }
+
+        // Hash the password
         const hashedPassword = await bcrypt.hash(password, 10);
 
+        // Create a new user
         const newUser = await prisma.user.create({
             data: {
                 name,
@@ -65,12 +75,16 @@ router.post('/signup', async (req, res) => {
             },
         });
 
-        res.status(201).send({ message: 'User registered successfully', user: { id: newUser.id, name: newUser.name, email: newUser.email } });
+        res.status(201).send({
+            message: 'User registered successfully',
+            user: { id: newUser.id, name: newUser.name, email: newUser.email },
+        });
     } catch (error) {
         console.error('Error during signup:', error);
         res.status(500).send({ message: 'Internal Server Error' });
     }
 });
+
 
 // Login route
 router.post('/login', passport.authenticate('local', { failureMessage: 'Invalid credentials' }), (req, res) => {
@@ -85,6 +99,22 @@ router.post('/logout', (req, res) => {
             return res.status(500).send({ message: 'Internal Server Error' });
         }
         res.status(200).send({ message: 'Logged out successfully' });
+    });
+});
+
+// Get current user's profile route
+router.get('/profile', (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).send({ message: 'Unauthorized: Please log in first' });
+    }
+
+    res.status(200).send({
+        message: 'Profile retrieved successfully',
+        user: {
+            id: req.user.id,
+            name: req.user.name,
+            email: req.user.email,
+        },
     });
 });
 

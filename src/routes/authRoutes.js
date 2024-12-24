@@ -63,6 +63,13 @@ router.post('/signup', async (req, res) => {
             return res.status(400).send({ message: 'Email is already registered. Please log in or use a different email.' });
         }
 
+         // Check if the username is already taken
+         const existingUserByName = await prisma.user.findUnique({ where: { name } });
+
+         if (existingUserByName) {
+            return res.status(400).send({ message: 'Username is already taken. Please choose a different username.' });
+        }
+
         // Hash the password
         const hashedPassword = await bcrypt.hash(password, 10);
 

@@ -4,6 +4,7 @@ import passport from "passport";
 import dotenv from "dotenv"
 import authRoutes from './src/routes/authRoutes.js';
 import userRoutes from './src/routes/userRoutes.js'
+import chatRoutes from './src/routes/chatRoutes.js'
 
 const app = express();
 dotenv.config();
@@ -31,7 +32,8 @@ app.use(passport.session());
 
 // Use the routes with the appropriate prefix
 app.use('/auth/v1', authRoutes);
-app.use('/user/v1', userRoutes)
+app.use('/user/v1', userRoutes);
+app.use('/chats/v1', chatRoutes);
 
 // Routes
 app.get("/", (req, res) => {

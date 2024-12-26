@@ -148,7 +148,7 @@ router.get('/:id', async (req, res) => {
         }
 
         const { id } = req.params; 
-        const authUserId = req.user.id; // Authenticated user's ID
+        const authUserId = req.user.id; 
 
         // Retrieve the chat details
         const chat = await prisma.chat.findUnique({
@@ -262,5 +262,101 @@ router.post('/:id/profile-picture', upload.single('image'), async (req, res) => 
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+
+// Update chat details like name, or add/remove participants.
+router.put('/:id', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).send({ message: 'Unauthorized: Please log in first' });
+    }
+
+    const { id } = req.params; // Chat ID
+    const authUserId = req.user.id; // Authenticated user ID
+    const { name, addParticipants, removeParticipants } = req.body;
+
+    try {
+        // Fetch the chat and verify it exists
+        const chat = await prisma.chat.findUnique({
+            where: { id },
+            include: {
+                users: {
+                    where: { isAdmin: true },
+                    select: { userId: true },
+                },
+            },
+        });
+
+        if (!chat) {
+            return res.status(404).send({ message: 'Chat not found' });
+        }
+
+        // Ensure the authenticated user is an admin of the chat
+        const isAdmin = chat.users.some((user) => user.userId === authUserId);
+        if (!isAdmin) {
+            return res.status(403).send({ message: 'You are not authorized to modify this chat' });
+        }
+
+        // Update chat name if provided
+        if (name) {
+            await prisma.chat.update({
+                where: { id },
+                data: { name },
+            });
+        }
+
+        // Add participants if provided
+        if (addParticipants && addParticipants.length > 0) {
+            const addPromises = addParticipants.map((userId) =>
+                prisma.chatUser.upsert({
+                    where: { userId_chatId: { userId, chatId: id } },
+                    create: { userId, chatId: id },
+                    update: {}, // No update needed
+                })
+            );
+            await Promise.all(addPromises);
+        }
+
+        // Remove participants if provided
+        if (removeParticipants && removeParticipants.length > 0) {
+            const removePromises = removeParticipants.map((userId) =>
+                prisma.chatUser.delete({
+                    where: { userId_chatId: { userId, chatId: id } },
+                })
+            );
+            await Promise.all(removePromises);
+        }
+
+        // Fetch updated chat details
+        const updatedChat = await prisma.chat.findUnique({
+            where: { id },
+            include: {
+                users: {
+                    select: {
+                        user: {
+                            select: { id: true, name: true },
+                        },
+                        isAdmin: true,
+                    },
+                },
+            },
+        });
+
+        res.status(200).send({
+            message: 'Chat updated successfully',
+            chat: {
+                id: updatedChat.id,
+                name: updatedChat.name,
+                participants: updatedChat.users.map((u) => ({
+                    id: u.user.id,
+                    name: u.user.name,
+                    isAdmin: u.isAdmin,
+                })),
+            },
+        });
+    } catch (error) {
+        console.error('Error updating chat details:', error);
+        res.status(500).send({ message: 'Internal Server Error' });
+    }
+});
+
 
 export default router

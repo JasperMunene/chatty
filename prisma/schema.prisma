@@ -21,6 +21,7 @@ model User {
   profilePicture String?    // Profile picture for the user
   chats          ChatUser[]
   messages       Message[]
+  notifications  Notification[] // Relation to notifications
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 }
@@ -31,6 +32,7 @@ model Chat {
   profilePicture String?    
   users          ChatUser[]
   messages       Message[]
+  notifications  Notification[] // Relation to notifications
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 }
@@ -53,4 +55,17 @@ model Message {
   chatId    String
   chat      Chat     @relation(fields: [chatId], references: [id])
   createdAt DateTime @default(now())
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String
+  chatId     String? // Optional, since not all notifications may be tied to a chat
+  type       String   // e.g., 'message', 'chat_invitation'
+  content    String   // A description of the event, e.g., 'New message in chat X'
+  isRead     Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  
+  user       User     @relation(fields: [userId], references: [id]) // Relation to User
+  chat       Chat?    @relation(fields: [chatId], references: [id]) // Relation to Chat
 }

@@ -6,6 +6,7 @@ import authRoutes from './src/routes/authRoutes.js';
 import userRoutes from './src/routes/userRoutes.js'
 import chatRoutes from './src/routes/chatRoutes.js'
 import messageRoutes from './src/routes/messageRoutes.js'
+import notificationRoutes from './src/routes/notificationRoutes.js'
 
 const app = express();
 dotenv.config();
@@ -36,6 +37,7 @@ app.use('/v1/auth', authRoutes);
 app.use('/v1/users', userRoutes);
 app.use('/v1/chats', chatRoutes);
 app.use('/v1/messages', messageRoutes);
+app.use('/v1/notifications', notificationRoutes )
 
 // Routes
 app.get("/", (req, res) => {

@@ -132,5 +132,51 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+router.put('/:id', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).send({ message: 'Unauthorized: Please log in first' });
+    }
+
+    const { id: messageId } = req.params; // Message ID
+    const { content } = req.body; 
+    const userId = req.user.id; // Authenticated user's ID
+
+    try {
+        // Check if the message exists and belongs to the user
+        const message = await prisma.message.findUnique({
+            where: { id: messageId },
+        });
+
+        if (!message) {
+            return res.status(404).send({ message: 'Message not found' });
+        }
+
+        if (message.senderId !== userId) {
+            return res.status(403).send({ message: 'You can only edit your own messages' });
+        }
+
+        // Ensure the content is not empty
+        if (!content || content.trim() === '') {
+            return res.status(400).send({ message: 'Message content cannot be empty' });
+        }
+
+        // Update the message content
+        const updatedMessage = await prisma.message.update({
+            where: { id: messageId },
+            data: { content },
+            select: { id: true, content: true, chatId: true, senderId: true, createdAt: true },
+        });
+
+        res.status(200).send({
+            message: 'Message updated successfully',
+            data: updatedMessage,
+        });
+    } catch (error) {
+        console.error('Error editing message:', error);
+        res.status(500).send({ message: 'Internal Server Error' });
+    }
+});
+
+
 
 export default router

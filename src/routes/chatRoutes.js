@@ -5,6 +5,7 @@ import cloudinary from '../config/cloudinaryConfig.js';
 
 const router = express.Router();
 
+// Create new chat
 router.post('/', async (req, res) => {
     const { name, userIds } = req.body;
 
@@ -60,6 +61,7 @@ router.post('/', async (req, res) => {
     }
 })
 
+// Retrieve a list of chats the user is a member of.
 router.get('/', async (req, res) => {
     try {
         // Check if the user is authenticated
@@ -137,6 +139,7 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Get details about a specific chat.
 router.get('/:id', async (req, res) => {
     try {
         // Check if the user is authenticated
@@ -214,6 +217,7 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// Upload or update a profile picture for a group chat.
 router.post('/:id/profile-picture', upload.single('image'), async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).send({ message: 'Unauthorized: Please log in first' });

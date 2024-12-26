@@ -57,6 +57,7 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Retrieve a specific user's profile information.
 router.get('/:id', async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).send({ message: 'Unauthorized: Please log in first' });
@@ -87,6 +88,7 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+// Upload or update the profile picture for a specific user.
 router.post('/:id/profile-picture', upload.single('image'), async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).send({ message: 'Unauthorized: Please log in first' });

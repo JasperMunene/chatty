@@ -495,6 +495,60 @@ router.patch('/:id/admins', async (req, res) => {
     }
 });
 
+router.get('/:id/admins', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).send({ message: 'Unauthorized: Please log in first' });
+    }
+
+    const { id } = req.params; // Chat ID
+
+    try {
+        // Fetch the chat and its participants
+        const chat = await prisma.chat.findUnique({
+            where: { id },
+            include: {
+                users: {
+                    where: { isAdmin: true },
+                    select: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true,
+                                profilePicture: true,
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+        if (!chat) {
+            return res.status(404).send({ message: 'Chat not found' });
+        }
+
+        // Check if it's a group chat
+        const isGroupChat = chat.name || chat.users.length > 1;
+        if (!isGroupChat) {
+            return res
+                .status(403)
+                .send({ message: 'Admins can only be listed for group chats' });
+        }
+
+        // Extract admin details
+        const admins = chat.users.map((user) => user.user);
+
+        res.status(200).send({
+            message: 'Admins retrieved successfully',
+            admins,
+        });
+    } catch (error) {
+        console.error('Error retrieving admins:', error);
+        res.status(500).send({ message: 'Internal Server Error' });
+    }
+});
+
+
 
 
 export default router

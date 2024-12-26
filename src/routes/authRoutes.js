@@ -110,7 +110,7 @@ router.post('/logout', (req, res) => {
 });
 
 // Get current user's profile route
-router.get('/profile', (req, res) => {
+router.get('/me', (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).send({ message: 'Unauthorized: Please log in first' });
     }

@@ -3,7 +3,7 @@ import prisma from '../../db/prisma.js';
 
 const router = express.Router();
 
-router.post('/chats', async (req, res) => {
+router.post('/', async (req, res) => {
     const { name, userIds } = req.body;
 
     // Validate the input
@@ -58,7 +58,7 @@ router.post('/chats', async (req, res) => {
     }
 })
 
-router.get('/chats', async (req, res) => {
+router.get('/', async (req, res) => {
     try {
         // Check if the user is authenticated
         if (!req.isAuthenticated()) {
@@ -135,7 +135,7 @@ router.get('/chats', async (req, res) => {
     }
 });
 
-router.get('/chats/:id', async (req, res) => {
+router.get('/:id', async (req, res) => {
     try {
         // Check if the user is authenticated
         if (!req.isAuthenticated()) {

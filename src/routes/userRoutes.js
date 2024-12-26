@@ -1,10 +1,12 @@
 import express from 'express';
 import prisma from '../../db/prisma.js';
+import cloudinary from '../config/cloudinaryConfig.js';
+import upload from '../config/multerConfig.js';
 
 const router = express.Router();
 
 // Search for users by username or email
-router.get('/users', async (req, res) => {
+router.get('/', async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).send({ message: 'Unauthorized: Please log in first' });
     }
@@ -55,7 +57,7 @@ router.get('/users', async (req, res) => {
     }
 });
 
-router.get('/users/:id', async (req, res) => {
+router.get('/:id', async (req, res) => {
     if (!req.isAuthenticated()) {
         return res.status(401).send({ message: 'Unauthorized: Please log in first' });
     }
@@ -82,6 +84,51 @@ router.get('/users/:id', async (req, res) => {
     } catch (error) {
         console.error('Error retrieving user profile:', error);
         res.status(500).send({ message: 'Internal Server Error' });
+    }
+});
+
+router.post('/:id/profile-picture', upload.single('image'), async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).send({ message: 'Unauthorized: Please log in first' });
+    }
+
+    const { id } = req.params;
+
+    try {
+        // Check if a file was uploaded
+        if (!req.file) {
+            return res.status(400).json({ message: 'No file uploaded' });
+        }
+
+        // Upload image to Cloudinary
+        cloudinary.uploader.upload_stream(
+            { resource_type: 'image' },
+            async (error, uploadResult) => {
+                if (error) {
+                    console.error('Error uploading image to Cloudinary:', error);
+                    return res.status(500).json({ message: 'Error uploading image to Cloudinary' });
+                }
+
+                // Get the secure URL from Cloudinary
+                const imageUrl = uploadResult.secure_url;
+
+                // Update the user's profile picture in the database
+                const updatedUser = await prisma.user.update({
+                    where: { id },
+                    data: { profilePicture: imageUrl },
+                    select: { id: true, name: true, profilePicture: true },
+                });
+
+                // Respond with the updated user details
+                res.status(200).json({
+                    message: 'Profile picture updated successfully',
+                    user: updatedUser,
+                });
+            }
+        ).end(req.file.buffer); // Pass the file buffer to the uploader
+    } catch (error) {
+        console.error('Error updating profile picture:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
     }
 });
 

@@ -31,9 +31,9 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 // Use the routes with the appropriate prefix
-app.use('/auth/v1', authRoutes);
-app.use('/user/v1', userRoutes);
-app.use('/chats/v1', chatRoutes);
+app.use('/v1/auth', authRoutes);
+app.use('/v1/users', userRoutes);
+app.use('/v1/chats', chatRoutes);
 
 // Routes
 app.get("/", (req, res) => {

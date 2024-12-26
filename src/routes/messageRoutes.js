@@ -177,6 +177,41 @@ router.put('/:id', async (req, res) => {
     }
 });
 
+router.delete('/:id', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).send({ message: 'Unauthorized: Please log in first' });
+    }
+
+    const { id: messageId } = req.params; // Message ID
+    const userId = req.user.id; // Authenticated user's ID
+
+    try {
+        // Check if the message exists
+        const message = await prisma.message.findUnique({
+            where: { id: messageId },
+        });
+
+        if (!message) {
+            return res.status(404).send({ message: 'Message not found' });
+        }
+
+        // Check if the authenticated user is the sender of the message
+        if (message.senderId !== userId) {
+            return res.status(403).send({ message: 'You can only delete your own messages' });
+        }
+
+        // Delete the message
+        await prisma.message.delete({
+            where: { id: messageId },
+        });
+
+        res.status(200).send({ message: 'Message deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting message:', error);
+        res.status(500).send({ message: 'Internal Server Error' });
+    }
+});
+
 
 
 export default router

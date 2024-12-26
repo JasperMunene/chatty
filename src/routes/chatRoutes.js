@@ -415,5 +415,86 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+router.patch('/:id/admins', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).send({ message: 'Unauthorized: Please log in first' });
+    }
+
+    const { id } = req.params; // Chat ID
+    const authUserId = req.user.id; // Authenticated user ID
+    const { assignAdmins = [], removeAdmins = [] } = req.body; // User IDs to assign/remove admin roles
+
+    try {
+        // Fetch the chat and its participants
+        const chat = await prisma.chat.findUnique({
+            where: { id },
+            include: {
+                users: {
+                    select: { userId: true, isAdmin: true },
+                },
+            },
+        });
+
+        if (!chat) {
+            return res.status(404).send({ message: 'Chat not found' });
+        }
+
+        // Check if it's a group chat
+        const isGroupChat = chat.name || chat.users.length > 1;
+        if (!isGroupChat) {
+            return res.status(403).send({ message: 'Admin roles can only be managed for group chats' });
+        }
+
+        // Check if the authenticated user is an admin
+        const isAdmin = chat.users.some(
+            (user) => user.userId === authUserId && user.isAdmin
+        );
+        if (!isAdmin) {
+            return res
+                .status(403)
+                .send({ message: 'You are not authorized to manage admin roles in this chat' });
+        }
+
+        // Assign admin roles
+        if (assignAdmins.length > 0) {
+            await Promise.all(
+                assignAdmins.map((userId) =>
+                    prisma.chatUser.update({
+                        where: { userId_chatId: { userId, chatId: id } },
+                        data: { isAdmin: true },
+                    })
+                )
+            );
+        }
+
+        // Remove admin roles
+        if (removeAdmins.length > 0) {
+            await Promise.all(
+                removeAdmins.map((userId) =>
+                    prisma.chatUser.update({
+                        where: { userId_chatId: { userId, chatId: id } },
+                        data: { isAdmin: false },
+                    })
+                )
+            );
+        }
+
+        // Fetch the updated chat participants
+        const updatedUsers = await prisma.chatUser.findMany({
+            where: { chatId: id },
+            select: { userId: true, isAdmin: true },
+        });
+
+        res.status(200).send({
+            message: 'Admin roles updated successfully',
+            participants: updatedUsers,
+        });
+    } catch (error) {
+        console.error('Error updating admin roles:', error);
+        res.status(500).send({ message: 'Internal Server Error' });
+    }
+});
+
+
 
 export default router

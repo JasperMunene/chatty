@@ -358,5 +358,62 @@ router.put('/:id', async (req, res) => {
     }
 });
 
+// Delete a specific chat (admin-only for group chats).
+router.delete('/:id', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).send({ message: 'Unauthorized: Please log in first' });
+    }
+
+    const { id } = req.params; // Chat ID
+    const authUserId = req.user.id; // Authenticated user ID
+
+    try {
+        // Fetch the chat and its participants
+        const chat = await prisma.chat.findUnique({
+            where: { id },
+            include: {
+                users: {
+                    select: { userId: true, isAdmin: true },
+                },
+            },
+        });
+
+        if (!chat) {
+            return res.status(404).send({ message: 'Chat not found' });
+        }
+
+        // Check if it's a group chat (has a name or more than one participant)
+        const isGroupChat = chat.name || chat.users.length > 1;
+        if (!isGroupChat) {
+            return res
+                .status(403)
+                .send({ message: 'You cannot delete one-on-one chats' });
+        }
+
+        // Check if the authenticated user is an admin of the group chat
+        const isAdmin = chat.users.some(
+            (user) => user.userId === authUserId && user.isAdmin
+        );
+        if (!isAdmin) {
+            return res
+                .status(403)
+                .send({ message: 'You are not authorized to delete this chat' });
+        }
+
+        await prisma.chatUser.deleteMany({ where: { chatId: id } });
+        await prisma.message.deleteMany({ where: { chatId: id } });
+
+        // Delete the chat
+        await prisma.chat.delete({
+            where: { id },
+        });
+
+        res.status(200).send({ message: 'Chat deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting chat:', error);
+        res.status(500).send({ message: 'Internal Server Error' });
+    }
+});
+
 
 export default router

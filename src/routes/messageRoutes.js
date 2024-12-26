@@ -69,4 +69,68 @@ router.post('/', async (req, res) => {
     }
 });
 
+router.get('/:id', async (req, res) => {
+    if (!req.isAuthenticated()) {
+        return res.status(401).send({ message: 'Unauthorized: Please log in first' });
+    }
+
+    const { id: chatId } = req.params; // Chat ID
+    const { search, limit, offset } = req.query; // Query parameters for search, pagination
+    const userId = req.user.id; // Authenticated user's ID
+
+    try {
+        // Verify the chat exists
+        const chat = await prisma.chat.findUnique({
+            where: { id: chatId },
+        });
+
+        if (!chat) {
+            return res.status(404).send({ message: 'Chat not found' });
+        }
+
+        // Check if the authenticated user is a participant of the chat
+        const isParticipant = await prisma.chatUser.findUnique({
+            where: {
+                userId_chatId: {
+                    userId,
+                    chatId,
+                },
+            },
+        });
+
+        if (!isParticipant) {
+            return res.status(403).send({ message: 'You are not a participant of this chat' });
+        }
+
+        // Build query filters
+        const filters = {
+            chatId,
+        };
+
+        if (search) {
+            filters.content = { contains: search, mode: 'insensitive' }; // Search by content
+        }
+
+        // Retrieve messages with optional search and pagination
+        const messages = await prisma.message.findMany({
+            where: filters,
+            orderBy: { createdAt: 'desc' }, // Newest messages first
+            take: parseInt(limit) || 50, // Limit number of messages, default 50
+            skip: parseInt(offset) || 0, // Offset for pagination, default 0
+            include: {
+                sender: { select: { id: true, name: true, profilePicture: true } },
+            },
+        });
+
+        res.status(200).send({
+            message: 'Messages retrieved successfully',
+            data: messages,
+        });
+    } catch (error) {
+        console.error('Error retrieving message history:', error);
+        res.status(500).send({ message: 'Internal Server Error' });
+    }
+});
+
+
 export default router

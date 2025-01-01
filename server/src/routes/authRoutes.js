@@ -50,30 +50,25 @@ passport.deserializeUser(async (id, done) => {
 router.post('/signup', async (req, res) => {
     const { name, email, password } = req.body;
 
-    // Validate input
     if (!name || !email || !password) {
         return res.status(400).send({ message: 'All fields are required' });
     }
 
     try {
-        // Check if the email is already registered
         const existingUser = await prisma.user.findUnique({ where: { email } });
 
         if (existingUser) {
-            return res.status(400).send({ message: 'Email is already registered. Please log in or use a different email.' });
+            return res.status(400).send({ message: 'Email is already registered.' });
         }
 
-         // Check if the username is already taken
-         const existingUserByName = await prisma.user.findUnique({ where: { name } });
+        const existingUserByName = await prisma.user.findFirst({ where: { name } });
 
-         if (existingUserByName) {
-            return res.status(400).send({ message: 'Username is already taken. Please choose a different username.' });
+        if (existingUserByName) {
+            return res.status(400).send({ message: 'Username is already taken.' });
         }
 
-        // Hash the password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Create a new user
         const newUser = await prisma.user.create({
             data: {
                 name,
@@ -93,10 +88,27 @@ router.post('/signup', async (req, res) => {
 });
 
 
+
+
 // Login route
-router.post('/login', passport.authenticate('local', { failureMessage: 'Invalid credentials' }), (req, res) => {
-    res.status(200).send({ message: 'Logged in successfully', user: { id: req.user.id, name: req.user.name, email: req.user.email } });
-});
+router.post(
+    '/login',
+    (req, res, next) => {
+        passport.authenticate('local', (err, user, info) => {
+            if (err) return next(err);
+            if (!user) return res.status(401).json({ message: info.message || 'Unauthorized' });
+
+            req.login(user, (loginErr) => {
+                if (loginErr) return next(loginErr);
+                res.status(200).json({
+                    message: 'Logged in successfully',
+                    user: { id: user.id, name: user.name, email: user.email },
+                });
+            });
+        })(req, res, next);
+    }
+);
+
 
 // Logout route
 router.post('/logout', (req, res) => {

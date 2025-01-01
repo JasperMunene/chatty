@@ -1,21 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import axios from 'axios';
+import { redirect } from "next/navigation";
 import MessageList from "@/components/chat/message-list";
 import MessageInput from "@/components/chat/message-input";
 import ChatHeader from "@/components/chat/chat-header";
 import ChatSidebar from "@/components/chat-sidebar";
 import socket from "@/services/socket";
 import { fetchChats, sendMessage } from "@/services/api";
+import { logoutUser } from "./auth/actions";
+import { useRouter } from "next/navigation";
+
 
 export default function Home() {
-  const [user, setUser] = useState({
-    id: 1,
-    name: "John Doe",
-    email: "john@example.com",
-    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=96&h=96&fit=crop&crop=face"
-  });
-
+  const router = useRouter()
+  const [user, setUser] = useState(null);
+  const [error, setError] = useState('');
   const [selectedChatId, setSelectedChatId] = useState(1);
   const [chats, setChats] = useState([
     {
@@ -36,6 +37,17 @@ export default function Home() {
 
   const [messages, setMessages] = useState([]);
   const [message, setMessage] = useState("");
+  const users = {
+    id: 1,
+    name: "John Doe",
+    email: "john@example.com",
+    avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=96&h=96&fit=crop&crop=face"
+  }
+
+  useEffect(() => {
+    
+  })
+  
 
   useEffect(() => {
     // Fetch chat messages
@@ -80,8 +92,14 @@ export default function Home() {
     setUser({ ...user, ...data });
   };
 
-  const handleLogout = () => {
-    console.log("Logging out...");
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+      router.push("/auth/login");
+      console.log('success')
+    } catch (err) {
+      console.error("Error during logout:", err);
+    }
   };
 
   return (
@@ -94,7 +112,7 @@ export default function Home() {
       />
       <div className="flex-1 flex flex-col min-w-0">
         <ChatHeader
-          user={user}
+          user={users}
           onUpdateProfile={handleUpdateProfile}
           onLogout={handleLogout}
         />
